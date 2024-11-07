@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import sequelize from "../configs/database";
 
 
-const Payment = sequelize.define("Payment", {
+const Payment = sequelize.define("Payment2", {
     payment_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -23,13 +23,6 @@ const Payment = sequelize.define("Payment", {
     method_payment:{
       type: DataTypes.STRING(20),
       defaultValue: "cash"
-    },
-    payment_status: {
-        type: DataTypes.INTEGER,
-        references: {
-          model: "paymentstatus",
-          key: "id"
-        }
     },
     deleted: {
         type: DataTypes.BOOLEAN,

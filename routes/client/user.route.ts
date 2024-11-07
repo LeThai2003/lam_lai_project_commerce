@@ -7,6 +7,8 @@ const router : Router = express.Router();
 
 router.post("/login", loginValidation, controller.login);
 
+router.post("/login-by-google", controller.loginByGoogle);
+
 router.post(
     "/register", 
     registerValidation, 

@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import sequelize from "../configs/database";
 
 
-const Payment2 = sequelize.define("Payment2", {
+const Payment3 = sequelize.define("Payment", {
     payment_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -24,6 +24,13 @@ const Payment2 = sequelize.define("Payment2", {
       type: DataTypes.STRING(20),
       defaultValue: "cash"
     },
+    payment_status: {
+        type: DataTypes.INTEGER,
+        references: {
+          model: "paymentstatus",
+          key: "id"
+        }
+    },
     deleted: {
         type: DataTypes.BOOLEAN,
         defaultValue: false, // Đặt giá trị mặc định là false
@@ -34,4 +41,4 @@ const Payment2 = sequelize.define("Payment2", {
   });
 
 
-export default Payment2;
+export default Payment3;

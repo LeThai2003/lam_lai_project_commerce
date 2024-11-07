@@ -9,7 +9,6 @@ import Contact from "../../models/contact.model";
 import Order from "../../models/order.model";
 import Payment from "../../models/payment.model";
 import Address from "../../models/address.model";
-import PaymentStatus from "../../models/paymentStatus.model";
 import Product from "../../models/product.model";
 import OrderItem from "../../models/order-item.model";
 import Cart from "../../models/cart.model";
@@ -38,9 +37,24 @@ export const index = async (req: Request, res: Response) => {
                 raw: true
             });
 
+            
+            // lấy thông in payment luôn -- lỡ rồi
+            const paymentInfo = await Payment.findOne({
+                where:{
+                    order_id: item["order_id"],
+                },
+                raw: true
+            })
+
             infoPayment["order_id"] = item["order_id"];
             infoPayment["payment_status"] = orderStatus["status"];
             infoPayment["payment_status_id"] = orderStatus["id"];
+            infoPayment["payment_id"] = paymentInfo["payment_id"];
+            infoPayment["is_payed"] = paymentInfo["is_payed"];
+            infoPayment["method_payment"] = paymentInfo["method_payment"];
+            
+            // console.log("payment=====================>", paymentInfo)
+            //end lấy thông in payment luôn
 
             item["infoPayment"] = infoPayment
 
@@ -78,7 +92,7 @@ export const index = async (req: Request, res: Response) => {
 
         return res.json({
             code: 200,
-            message: "Lấy danh sách contacts thành công",
+            message: "Lấy danh sách đơn hàng thành công",
             data: paginatedOrders,
             totalPage: objectPagination["totalPage"],
             pageNow: objectPagination["page"]
@@ -87,7 +101,7 @@ export const index = async (req: Request, res: Response) => {
     } catch (error) {
         return res.json({
             code: 400,
-            message: "Lỗi lấy danh sách contacts " + error
+            message: "Lỗi lấy danh sách đơn hàng " + error
         })
     }
 }
@@ -128,8 +142,8 @@ export const changeStatus = async (req: Request, res: Response) => {
             raw: true
         });
 
-        console.log("---------------------------------------------")
-        console.log(orderExist)
+        // console.log("---------------------------------------------")
+        // console.log(orderExist)
 
         if(!orderExist)
         {
@@ -150,12 +164,12 @@ export const changeStatus = async (req: Request, res: Response) => {
         {
             return res.json({
                 code: 400,
-                message: "Trạng thái đơn hàng không hợp lệ!"
+                message: "Không thể thay đổi trạng thái đơn hàng đã hủy hoặc đã được giao!"
             })  
         }
 
 
-        if(orderExistStatus["status"] != 'CANCEL USER' || orderExistStatus["status"] != 'CANCEL MANAGER') // đã hủy
+        if(orderExistStatus["status"] == 'CANCEL USER' || orderExistStatus["status"] == 'CANCEL MANAGER') // đã hủy
         {
             return res.json({
                 code: 400,
@@ -163,7 +177,7 @@ export const changeStatus = async (req: Request, res: Response) => {
             })  
         }
 
-        if(orderExistStatus["status"] != 'DELIVERIED') // sản phẩm đã được giao hàng 
+        if(orderExistStatus["status"] == 'DELIVERIED') // sản phẩm đã được giao hàng 
         {
             return res.json({
                 code: 400,
@@ -171,7 +185,14 @@ export const changeStatus = async (req: Request, res: Response) => {
             })  
         }
 
-        if(statusId == 4 || statusId == 5)  // nếu lựa chọn là hủy
+        const orderStatusChange =  await OrderStatus.findOne({
+            where: {
+                id: statusId
+            },
+            raw: true
+        });
+
+        if(orderStatusChange["status"] == 'CANCEL MANAGER' || orderStatusChange["status"] == 'CANCEL USER')  // nếu lựa chọn là hủy
         {
             // tìm những sản phẩm của đơn hàng
             const orderItems = await OrderItem.findAll({

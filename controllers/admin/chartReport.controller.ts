@@ -178,7 +178,7 @@ export const totalRevenueWithYear = async (req: Request, res: Response) => {
             JOIN 
                 payments ON orders.order_id = payments.order_id 
             JOIN
-            	orderstatus ON orders.order_id = orderstatus.id
+            	orderstatus ON orders.order_status = orderstatus.id
             WHERE
                 payments.is_payed = 1
                 AND year(payments.updatedAt) = ${year}
@@ -208,7 +208,7 @@ export const totalRevenueWithYear = async (req: Request, res: Response) => {
             JOIN 
                 payments ON orders.order_id = payments.order_id 
             JOIN
-                orderstatus ON orders.order_id = orderstatus.id
+                orderstatus ON orders.order_status = orderstatus.id
             WHERE
                 payments.is_payed = 1
                 AND orderstatus.status = 'DELIVERIED'

@@ -28,6 +28,7 @@ export const listBlog = async (req: Request, res: Response) => {
             const titleFromSearh = req.query["searchKey"] as string;
             let title = convertToSlug(titleFromSearh.toLowerCase());
             find["slug"] = { [Op.like]: `%${title}%` };
+            console.log(title)
         }
 
         const blogsList = await Blog.findAll({

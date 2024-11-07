@@ -11,7 +11,133 @@ import sequelize from "../../configs/database";
 import { generateRandomNumber } from "../../helpers/generate.helper";
 import ForgotPassword from "../../models/forgotPassword.model";
 import Role from "../../models/roles.model";
+import { OAuth2Client } from 'google-auth-library';
 
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+//[POST] /user/login-by-google
+export const loginByGoogle = async (req: Request, res: Response) => {
+    
+    try {
+        const { token } = req.body;
+
+        console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        console.log(token);
+
+        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const userInfo = await userInfoResponse.json();
+
+        console.log(userInfo);
+
+        if(!userInfo)
+        {
+            return res.json({
+                code: 401,
+                message: 'Google token không hợp lệ',
+            });
+        }
+        
+        let credential = await Credential.findOne({
+            where: { 
+                username: userInfo["email"]
+            },
+            raw: true,
+        });;
+
+        if(!credential)  
+        {
+            const newUser = await createGoogleUser(userInfo);
+            credential = newUser.credential;
+        }
+        
+        const role = await Role.findOne({
+            where: {
+                role_id: credential['role_id']
+            },
+            raw: true
+        })
+
+        // Tạo access token
+        const accessToken = jwt.sign({ credential_id: credential["credential_id"], role: role['title']}, process.env.SECRET_KEY, { expiresIn: '12h' });
+
+        // Tạo refresh token
+        const refreshToken = jwt.sign({ credential_id: credential["credential_id"],role: role['title']}, process.env.SECRET_KEY, { expiresIn: '7d' });
+
+        // lưu token lại
+        const verifycation_data = {
+            credential_id: credential["credential_id"],
+            token_type: "access",
+            verif_token: accessToken,
+            expire_date: new Date(Date.now() + 12 * 60 * 60 * 1000)
+            // expire_date: new Date(Date.now() + 1000)
+        };
+
+
+        const refreshTokenData = {
+            credential_id: credential["credential_id"],
+            token_type: "refresh",
+            verif_token: refreshToken,
+            expire_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        };
+
+        // Trước khi lưu - Xóa hết token cũ của người đó đi
+        await VerificationToken.destroy({
+            where:{
+                credential_id: credential["credential_id"],
+                token_type: {
+                    [Op.or]: ["refresh", "access"]
+                }
+            }
+        })
+        // end Trước khi lưu - Xóa hết token cũ của người đó đi
+
+        await VerificationToken.create(verifycation_data);
+        await VerificationToken.create(refreshTokenData);
+        
+        return res.json({
+            code: 200,
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+        });
+
+    } catch (error) {
+        return res.json({ 
+            code: "400",
+            message: 'Error ( login by google): ' + error, 
+        });
+    }
+}
+
+// Hàm tạo tài khoản Google
+async function createGoogleUser(payload: any) {
+    const { email, given_name, name, picture } = payload;
+
+    const credential = await Credential.create({
+        username: email,
+        password: "", // Mật khẩu không thực sự cần thiết vì họ đăng nhập qua Google
+        role_id: 12,
+    });
+
+    const credential_id = credential.dataValues.credential_id;
+
+    console.log(credential_id);
+
+    const user = await User.create({
+        credential_id: credential_id,
+        first_name: given_name,
+        last_name: name,
+        email: email,
+        phone: '', // Có thể yêu cầu sau
+        image_url: picture || '',
+    });
+
+    return { user, credential };
+}
 
 //[POST] /user/login
 export const login = async (req: Request, res: Response) => {
